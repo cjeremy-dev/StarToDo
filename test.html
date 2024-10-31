@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elegant To-Do List</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .custom-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 1.5em;
+            height: 1.5em;
+            border: 2px solid #CBD5E0;
+            border-radius: 50%;
+            margin-right: 0.75em;
+            display: grid;
+            place-content: center;
+            transition: all 0.3s ease;
+        }
+        .custom-checkbox::before {
+            content: "";
+            width: 0.65em;
+            height: 0.65em;
+            transform: scale(0);
+            transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em #4A5568;
+            transform-origin: center;
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+        }
+        .custom-checkbox:checked {
+            border-color: #4A5568;
+            background-color: #4A5568;
+        }
+        .custom-checkbox:checked::before {
+            transform: scale(1);
+        }
+        .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-left: 8px;
+            cursor: pointer;
+        }
+        .dot-task {
+            background-color: #ED8936;
+        }
+        .dot-routine {
+            background-color: #ECC94B;
+        }
+        #syncButton svg {
+            position: absolute;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-r from-orange-100 to-yellow-100 p-8">
+    <div class="max-w-5xl mx-auto">
+        <div class="flex justify-between items-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800">Elegant To-Do List</h1>
+            <div class="flex space-x-4">
+                <button id="syncButton" class="bg-white text-orange-500 rounded-full w-12 h-12 flex items-center justify-center hover:bg-gray-100 transition-colors shadow-lg">
+                    <svg id="syncIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <svg id="tickIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-6 h-6 hidden">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <svg id="errorIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-6 h-6 hidden">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </button>
+                <button id="addButton" class="bg-orange-500 text-white rounded-full w-12 h-12 flex items-center justify-center hover:bg-orange-600 transition-colors shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Today's Tasks -->
+            <div class="bg-white rounded-xl shadow-xl p-6 transform transition-all hover:scale-105">
+                <h2 class="text-2xl font-semibold mb-6 text-gray-700">Today's Tasks</h2>
+                <ul id="todayTasks" class="space-y-4"></ul>
+            </div>
+
+            <!-- Today's Routines -->
+            <div class="bg-white rounded-xl shadow-xl p-6 transform transition-all hover:scale-105">
+                <h2 class="text-2xl font-semibold mb-6 text-gray-700">Today's Routines</h2>
+                <ul id="todayRoutines" class="space-y-4"></ul>
+            </div>
+
+            <!-- Tomorrow's Tasks & Routines -->
+            <div class="bg-white rounded-xl shadow-xl p-6 transform transition-all hover:scale-105">
+                <h2 class="text-2xl font-semibold mb-6 text-gray-700">Tomorrow's Tasks & Routines</h2>
+                <ul id="tomorrowItems" class="space-y-4"></ul>
+            </div>
+        </div>
+
+        <!-- View All Tasks Link -->
+        <div class="mt-8 text-center">
+            <a href="#" id="viewAllLink" class="text-orange-500 hover:text-orange-600 transition-colors">View all tasks &rarr;</a>
+        </div>
+    </div>
+
+    <!-- Add Item Modal -->
+    <div id="addModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full">
+            <h2 class="text-3xl font-bold mb-6 text-gray-800">Add New Item</h2>
+            <form id="newItemForm">
+                <div class="mb-6">
+                    <label for="itemName" class="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                    <input type="text" id="itemName" name="itemName" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                </div>
+                <div class="mb-6">
+                    <label for="itemType" class="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                    <select id="itemType" name="itemType" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                        <option value="task">Task</option>
+                        <option value="routine">Routine</option>
+                    </select>
+                </div>
+                <div id="dateInputContainer" class="mb-6">
+                    <label for="itemDueDate" class="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
+                    <input type="date" id="itemDueDate" name="itemDueDate" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                </div>
+                <div id="dayInputContainer" class="mb-6 hidden">
+                    <label for="itemDay" class="block text-sm font-medium text-gray-700 mb-2">Day of Week</label>
+                    <select id="itemDay" name="itemDay" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                        <option value="0">Sunday</option>
+                        <option value="1">Monday</option>
+                        <option value="2">Tuesday</option>
+                        <option value="3">Wednesday</option>
+                        <option value="4">Thursday</option>
+                        <option value="5">Friday</option>
+                        <option value="6">Saturday</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" id="cancelAddButton" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">Cancel</button>
+                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">Add Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Show All Tasks Modal -->
+    <div id="showAllModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center overflow-y-auto">
+        <div class="bg-white p-8 rounded-xl shadow-2xl max-w-4xl w-full m-4">
+            <h2 class="text-3xl font-bold mb-6 text-gray-800">All Tasks and Routines</h2>
+            <div id="allItemsList" class="space-y-6"></div>
+            <div class="mt-8 flex justify-end">
+                <button id="closeAllButton" class="px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load items from local storage
+        let items = JSON.parse(localStorage.getItem('todoItems')) || [];
+
+        // Function to save items to local storage
+        function saveItems() {
+            localStorage.setItem('todoItems', JSON.stringify(items));
+        }
+
+        // Function to get today's and tomorrow's dates
+        function getDates() {
+            const today = new Date().toISOString().split('T')[0];
+            const tomorrow = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0];
+            return { today, tomorrow };
+        }
+
+        // Function to get the date for a specific day of the week
+        function getDateForDay(dayIndex) {
+            const { today,tomorrow } = getDates();
+            const currentDate = new Date(today);
+            const currentDay = currentDate.getDay();
+            const daysUntilTarget = (dayIndex + 7 - currentDay) % 7;
+            currentDate.setDate(currentDate.getDate() + daysUntilTarget);
+            return currentDate.toISOString().split('T')[0];
+        }
+
+        // Function to render items
+        function renderItems() {
+            const { today, tomorrow } = getDates();
+
+            document.getElementById('todayTasks').innerHTML = '';
+            document.getElementById('todayRoutines').innerHTML = '';
+            document.getElementById('tomorrowItems').innerHTML = '';
+
+            items.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center';
+                li.innerHTML = `
+                    <input type="checkbox" class="custom-checkbox" ${item.done ? 'checked' : ''}>
+                    <span class="${item.done ? 'line-through text-gray-400' : 'text-gray-700'} flex-grow">${item.name}</span>
+                    <span class="dot ${item.type === 'task' ? 'dot-task' : 'dot-routine'}" data-index="${index}"></span>
+                `;
+
+                li.querySelector('input').addEventListener('change', (e) => {
+                    item.done = e.target.checked;
+                    saveItems();
+                    renderItems();
+                });
+
+                li.querySelector('.dot').addEventListener('click', (e) => {
+                    deleteItem(index);
+                });
+
+                const itemDate = item.type === 'routine' ? getDateForDay(parseInt(item.day)) : item.dueDate;
+
+                if (itemDate === today) {
+                    if (item.type === 'task') {
+                        document.getElementById('todayTasks').appendChild(li);
+                    } else {
+                        document.getElementById('todayRoutines').appendChild(li);
+                    }
+                } else if (itemDate === tomorrow) {
+                    document.getElementById('tomorrowItems').appendChild(li);
+                }
+            });
+        }
+
+        // Function to delete an item
+        function deleteItem(index) {
+            items.splice(index, 1);
+            saveItems();
+            renderItems();
+            renderAllItems();
+        }
+
+        // Function to delete expired and completed tasks
+        function deleteExpiredTasks() {
+            const { today } = getDates();
+            items = items.filter(item => !(item.type === 'task' && item.done && item.dueDate < today));
+            saveItems();
+            renderItems();
+        }
+
+        // Function to render all items in the modal
+        function renderAllItems() {
+            const allItemsList = document.getElementById('allItemsList');
+            allItemsList.innerHTML = '';
+
+            const groupedItems = items.reduce((acc, item) => {
+                const itemDate = item.type === 'routine' ? getDateForDay(parseInt(item.day)) : item.dueDate;
+                if (!acc[itemDate]) {
+                    acc[itemDate] = [];
+                }
+                acc[itemDate].push(item);
+                return acc;
+            }, 
+            {});
+
+            const sortedDates = Object.keys(groupedItems).sort();
+
+            sortedDates.forEach(date => {
+                const dateSection = document.createElement('div');
+                dateSection.innerHTML = `
+                    <h3 class="text-xl font-semibold mb-4 text-gray-700">${formatDate(date)}</h3>
+                    <ul class="space-y-2"></ul>
+                `;
+
+                groupedItems[date].forEach((item, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'flex items-center';
+                    li.innerHTML = `
+                        <input type="checkbox" class="custom-checkbox" ${item.done ? 'checked' : ''}>
+                        <span class="${item.done ? 'line-through text-gray-400' : 'text-gray-700'} flex-grow">${item.name}</span>
+                        <span class="dot ${item.type === 'task' ? 'dot-task' : 'dot-routine'}" data-index="${index}"></span>
+                    `;
+
+                    li.querySelector('input').addEventListener('change', (e) => {
+                        item.done = e.target.checked;
+                        saveItems();
+                        renderItems();
+                        renderAllItems();
+                    });
+
+                    li.querySelector('.dot').addEventListener('click', (e) => {
+                        const itemIndex = items.findIndex(i => i.name === item.name && (i.dueDate === date || getDateForDay(parseInt(i.day)) === date));
+                        if (itemIndex !== -1) {
+                            deleteItem(itemIndex);
+                        }
+                    });
+
+                    dateSection.querySelector('ul').appendChild(li);
+                });
+
+                allItemsList.appendChild(dateSection);
+            });
+        }
+
+        // Helper function to format date
+        function formatDate(dateString) {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            return new Date(dateString).toLocaleDateString(undefined, options);
+        }
+
+        // Event listener for sync button
+        document.getElementById('syncButton').addEventListener('click', async () => {
+            const updatedItems = await syncTodos();
+            if (updatedItems) {
+                items = updatedItems;
+                renderItems();
+            }
+        });
+
+        // Event listener for add button
+        document.getElementById('addButton').addEventListener('click', () => {
+            document.getElementById('addModal').style.display = 'flex';
+        });
+
+        // Event listener for cancel button in add modal
+        document.getElementById('cancelAddButton').addEventListener('click', () => {
+            document.getElementById('addModal').style.display = 'none';
+        });
+
+        // Event listener for item type selection
+        document.getElementById('itemType').addEventListener('change', (e) => {
+            const isRoutine = e.target.value === 'routine';
+            document.getElementById('dateInputContainer').style.display = isRoutine ? 'none' : 'block';
+            document.getElementById('dayInputContainer').style.display = isRoutine ? 'block' : 'none';
+        });
+
+        // Event listener for form submission
+        document.getElementById('newItemForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newItem = {
+                name: document.getElementById('itemName').value,
+                type: document.getElementById('itemType').value,
+                done: false
+            };
+
+            if (newItem.type === 'task') {
+                newItem.dueDate = document.getElementById('itemDueDate').value;
+            } else {
+                newItem.day = document.getElementById('itemDay').value;
+            }
+
+            items.push(newItem);
+            saveItems();
+            deleteExpiredTasks();
+            renderItems();
+            document.getElementById('addModal').style.display = 'none';
+            document.getElementById('newItemForm').reset();
+        });
+
+        // Event listener for view all link
+        document.getElementById('viewAllLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            renderAllItems();
+            document.getElementById('showAllModal').style.display = 'flex';
+        });
+
+        // Event listener for close button in show all modal
+        document.getElementById('closeAllButton').addEventListener('click', () => {
+            document.getElementById('showAllModal').style.display = 'none';
+        });
+
+        // Initial render
+        deleteExpiredTasks();
+        renderItems();
+
+        async function syncTodos() {
+            const syncIcon = document.getElementById('syncIcon');
+            const tickIcon = document.getElementById('tickIcon');
+            const errorIcon = document.getElementById('errorIcon');
+
+            function showIcon(iconElement) {
+                syncIcon.classList.add('hidden');
+                tickIcon.classList.add('hidden');
+                errorIcon.classList.add('hidden');
+                iconElement.classList.remove('hidden');
+            }
+
+            function resetIcon() {
+                setTimeout(() => {
+                    showIcon(syncIcon);
+                }, 1000);
+            }
+
+            try {
+                const API_URL = 'http://123.56.160.48:2023/api/handler.php'; // Replace with your actual API URL
+
+                // Fetch todos from the API
+                const response = await fetch(`${API_URL}?action=list`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch todos from the server');
+                }
+                const apiTodos = await response.json();
+
+                // Get local todos
+                const localTodos = JSON.parse(localStorage.getItem('todoItems')) || [];
+
+                // Create sets for quick lookup
+                const apiTodoNames = new Set(apiTodos.map(todo => todo.title));
+                const localTodoNames = new Set(localTodos.map(todo => todo.name));
+
+                // 1. Add items from API that are not in local storage
+                for (const apiTodo of apiTodos) {
+                    if (!localTodoNames.has(apiTodo.title)) {
+                        localTodos.push({
+                            name: apiTodo.title,
+                            type: apiTodo.category,
+                            done: false,
+                            ...(apiTodo.category === 'task' ? { dueDate: apiTodo.due_date } : { day: apiTodo.day })
+                        });
+                    }
+                }
+
+                // 2. Add items from local storage that are not in API
+                for (const localTodo of localTodos) {
+                    if (!apiTodoNames.has(localTodo.name)) {
+                        const params = new URLSearchParams({
+                            action: 'add',
+                            title: localTodo.name,
+                            category: localTodo.type,
+                            ...(localTodo.type === 'task' ? { due_date: localTodo.dueDate } : { day: localTodo.day })
+                        });
+
+                        const addResponse = await fetch(`${API_URL}?${params}`, {
+                            method: 'GET',
+                            mode: 'cors',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                        });
+
+                        if (!addResponse.ok) {
+                            throw new Error(`Failed to add todo "${localTodo.name}" to the server`);
+                        }
+                        const result = await addResponse.json();
+                        if (!result.success) {
+                            console.error(`Failed to add todo "${localTodo.name}" to the server`);
+                        }
+                    }
+                }
+
+                // Update the items array with the synced data
+                items = localTodos;
+
+                // Save updated local todos
+                localStorage.setItem('todoItems', JSON.stringify(items));
+
+                // Re-render the todo list
+                renderItems();
+
+                console.log('Synchronization completed successfully');
+                showIcon(tickIcon);
+                resetIcon();
+
+                return items; // Return the updated items
+            } catch (error) {
+                console.error('Synchronization failed:', error);
+                alert('Failed to synchronize todos. Please try again later.');
+                showIcon(errorIcon);
+                resetIcon();
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
+<script>
+  // VConsole 默认会挂载到 `window.VConsole` 上
+  var vConsole = new window.VConsole();
+</script>
+</body>
+</html>
